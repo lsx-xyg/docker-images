@@ -1,0 +1,55 @@
+name: cli
+
+on:
+    workflow_dispatch:
+        inputs:
+            dockerhub_image:
+                description: '要拉取的 DockerHub 镜像名称'
+                required: true
+                default: 'nginx'
+            tag:
+                description: 'Docker 镜像标签（默认：latest）'
+                required: false
+                default: 'latest'
+            ghcr_image:
+                description: '推送到GHCR.IO的镜像名称（不含用户名前缀）'
+                required: true
+                default: 'nginx'
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ inputs.ghcr_image }}
+    DOCKERHUB_IMAGE: ${{ inputs.dockerhub_image }}
+    TAG: ${{ inputs.tag }}
+
+jobs:
+    mirror:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: 设置小写的 GitHub 用户名
+              run: echo "ACTOR_LOWER=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+            
+            - name: 登录到GitHub容器注册表
+              uses: docker/login-action@v3
+              with:
+                registry: ${{ env.REGISTRY }}
+                username: ${{ github.actor }}
+                password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: 登录到Docker Hub
+              uses: docker/login-action@v3
+              with:
+                username: ${{ secrets.DOCKER_USERNAME }}
+                password: ${{ secrets.DOCKER_PASSWORD }}
+
+            - name: 从DockerHub拉取Docker镜像
+              run: docker pull ${{ env.DOCKERHUB_IMAGE }}:${{ env.TAG }}
+
+            - name: 为GitHub容器注册表标记Docker镜像
+              run: |
+                docker tag ${{ env.DOCKERHUB_IMAGE }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ env.ACTOR_LOWER }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+
+            - name: 将Docker镜像推送到GitHub容器注册表
+              run: |
+                docker push ${{ env.REGISTRY }}/${{ env.ACTOR_LOWER }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
