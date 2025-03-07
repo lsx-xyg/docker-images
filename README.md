@@ -6,11 +6,11 @@
 
 ## 推送到阿里云容器镜像服务
 1. 登录阿里云Docker Registry
-$ docker login --username=[myusername] registry.cn-shanghai.aliyuncs.com
+`docker login --username=[myusername] registry.cn-shanghai.aliyuncs.com`
 用于登录的用户名为阿里云账号全名，密码为开通服务时设置的密码
 2. 从Registry中拉取镜像
-$ docker pull registry.cn-shanghai.aliyuncs.com/[myusername]/[myimage]:[镜像版本号]
+`docker pull registry.cn-shanghai.aliyuncs.com/[myusername]/[myimage]:[镜像版本号]`
 3. 将镜像推送到Registry
-$ docker login --username=[myusername] registry.cn-shanghai.aliyuncs.com
-$ docker tag [ImageId] registry.cn-shanghai.aliyuncs.com/[myimage]:[镜像版本号]
-$ docker push registry.cn-shanghai.aliyuncs.com/[mynamespace]/[myimage]:[镜像版本号]
+`docker login --username=[myusername] registry.cn-shanghai.aliyuncs.com`
+`docker tag [ImageId] registry.cn-shanghai.aliyuncs.com/[myimage]:[镜像版本号]`
+`docker push registry.cn-shanghai.aliyuncs.com/[mynamespace]/[myimage]:[镜像版本号]`
