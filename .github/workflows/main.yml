@@ -1,55 +1,82 @@
-name: cli
+name: '拉取镜像并推送到 GHCR.IO 和 阿里ACR'
 
 on:
-    workflow_dispatch:
-        inputs:
-            dockerhub_image:
-                description: '要拉取的 DockerHub 镜像名称'
-                required: true
-                default: 'nginx'
-            tag:
-                description: 'Docker 镜像标签（默认：latest）'
-                required: false
-                default: 'latest'
-            ghcr_image:
-                description: '推送到GHCR.IO的镜像名称（不含用户名前缀）'
-                required: true
-                default: 'nginx'
+  workflow_dispatch:
+    inputs:
+      dockerhub_image_name:
+        description: '需要拉取的镜像名称'
+        required: true
+        default: 'nginx'
+      dockerhub_image_tag:
+        description: '镜像标签（默认：latest）'
+        required: false
+        default: 'latest'
+      upload_image_name:
+        description: '推送的镜像名称'
+        required: true
+        default: 'nginx'
+      upload_image_tag:
+        description: '推送的镜像标签'
+        required: false
+        default: 'latest'
+      acr_region:
+        description: '阿里云ACR地域 (如：cn-hangzhou)'
+        required: true
+        default: 'cn-shanghai'
+      acr_namespace:
+        description: '阿里云ACR命名空间'
+        required: true
+        default: 'dbthree'
 
 env:
-    REGISTRY: ghcr.io
-    IMAGE_NAME: ${{ inputs.ghcr_image }}
-    DOCKERHUB_IMAGE: ${{ inputs.dockerhub_image }}
-    TAG: ${{ inputs.tag }}
+  REGISTRY_GHCR: ghcr.io
+  PULL_IMAGE_NAME: ${{ inputs.dockerhub_image_name }}
+  PULL_IMAGE_TAG: ${{ inputs.dockerhub_image_tag }}
+  UPLOAD_IMAGE_NAME: ${{ inputs.upload_image_name }}
+  UPLOAD_IMAGE_TAG: ${{ inputs.upload_image_tag }}
 
 jobs:
-    mirror:
-        runs-on: ubuntu-latest
+  pull_and_push:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: 设置小写的 GitHub 用户名
-              run: echo "ACTOR_LOWER=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-            
-            - name: 登录到GitHub容器注册表
-              uses: docker/login-action@v3
-              with:
-                registry: ${{ env.REGISTRY }}
-                username: ${{ github.actor }}
-                password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: 设置小写的GitHub用户名
+        run: echo "ACTOR_LOWER=$(echo '${{ github.actor }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-            - name: 登录到Docker Hub
-              uses: docker/login-action@v3
-              with:
-                username: ${{ secrets.DOCKER_USERNAME }}
-                password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: 配置ACR信息
+        run: |
+          echo "REGISTRY_ACR=registry.${{ inputs.acr_region }}.aliyuncs.com" >> $GITHUB_ENV
+          echo "ALIYUN_IMAGE_PATH=${{ inputs.acr_namespace }}/${{ env.UPLOAD_IMAGE_NAME }}" >> $GITHUB_ENV
 
-            - name: 从DockerHub拉取Docker镜像
-              run: docker pull ${{ env.DOCKERHUB_IMAGE }}:${{ env.TAG }}
+      - name: 登录GHCR.IO
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_GHCR }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: 为GitHub容器注册表标记Docker镜像
-              run: |
-                docker tag ${{ env.DOCKERHUB_IMAGE }}:${{ env.TAG }} ${{ env.REGISTRY }}/${{ env.ACTOR_LOWER }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+      - name: 登录ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY_ACR }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
 
-            - name: 将Docker镜像推送到GitHub容器注册表
-              run: |
-                docker push ${{ env.REGISTRY }}/${{ env.ACTOR_LOWER }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+      - name: 从DockerHub拉取镜像
+        run: docker pull ${{ env.PULL_IMAGE_NAME }}:${{ env.PULL_IMAGE_TAG }}
+
+      - name: 标记镜像
+        run: |
+          # 标记GHCR镜像
+          docker tag ${{ env.PULL_IMAGE_NAME }}:${{ env.PULL_IMAGE_TAG }} \
+            ${{ env.REGISTRY_GHCR }}/${{ env.ACTOR_LOWER }}/${{ env.UPLOAD_IMAGE_NAME }}:${{ env.UPLOAD_IMAGE_TAG }}
+          
+          # 标记阿里云镜像
+          docker tag ${{ env.PULL_IMAGE_NAME }}:${{ env.PULL_IMAGE_TAG }} \
+            ${{ env.REGISTRY_ACR }}/${{ env.ALIYUN_IMAGE_PATH }}:${{ env.UPLOAD_IMAGE_TAG }}
+
+      - name: 推送到GHCR
+        run: docker push ${{ env.REGISTRY_GHCR }}/${{ env.ACTOR_LOWER }}/${{ env.UPLOAD_IMAGE_NAME }}:${{ env.UPLOAD_IMAGE_TAG }}
+
+      - name: 推送到阿里云ACR
+        run: docker push ${{ env.REGISTRY_ACR }}/${{ env.ALIYUN_IMAGE_PATH }}:${{ env.UPLOAD_IMAGE_TAG }}
