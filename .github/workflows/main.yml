@@ -27,6 +27,10 @@ on:
         description: '阿里云ACR命名空间'
         required: true
         default: 'dbthree'
+      platform:
+        description: '目标平台架构 (可选，默认为当前系统。可选值: linux/amd64, linux/arm64, linux/arm/v7)'
+        required: false
+        default: ''
 
 env:
   REGISTRY_GHCR: ghcr.io
@@ -34,6 +38,7 @@ env:
   PULL_IMAGE_TAG: ${{ inputs.dockerhub_image_tag }}
   UPLOAD_IMAGE_NAME: ${{ inputs.upload_image_name }}
   UPLOAD_IMAGE_TAG: ${{ inputs.upload_image_tag }}
+  TARGET_PLATFORM: ${{ inputs.platform }}
 
 jobs:
   pull_and_push:
@@ -69,7 +74,13 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: 从DockerHub拉取镜像
-        run: docker pull ${{ env.PULL_IMAGE_NAME }}:${{ env.PULL_IMAGE_TAG }}
+        run: |
+          # 如果指定了平台，则拉取特定平台的镜像
+          if [ -n "${{ env.TARGET_PLATFORM }}" ]; then
+            docker pull --platform ${{ env.TARGET_PLATFORM }} ${{ env.PULL_IMAGE_NAME }}:${{ env.PULL_IMAGE_TAG }}
+          else
+            docker pull ${{ env.PULL_IMAGE_NAME }}:${{ env.PULL_IMAGE_TAG }}
+          fi
 
       - name: 标记镜像
         run: |
