@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  mysql:
+    container_name: mysql
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 123321cc
+      MYSQL_DATABASE: test
+      MYSQL_USER: lsx
+      MYSQL_PASSWORD: 123321cc
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - common-bridge
+
+volumes:
+  mysql_data:
+    name: mysql_data
+
+networks:
+  common-bridge:
+    name: common-bridge
+    external: true
+

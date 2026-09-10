@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce
+    restart: unless-stopped
+    ports:
+      - '10000:9000'
+    networks:
+      - common-bridge
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+
+volumes:
+  portainer_data:
+    name: portainer_data
+
+networks:
+  common-bridge:
+    driver: bridge
+    name: common-bridge
+    external: true
+
+
+

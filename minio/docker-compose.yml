@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  minio:
+    container_name: minio
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=123321cc
+    networks:
+      - common-bridge
+
+volumes:
+  minio_data:
+    name: minio_data
+
+networks:
+  common-bridge:
+    driver: bridge
+    name: common-bridge
+    external: true

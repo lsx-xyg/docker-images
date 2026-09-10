@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:management
+    hostname: rabbitmq
+    ports:
+      - '15672:15672'
+      - '5672:5672'
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=123321cc
+      - RABBITMQ_DEFAULT_VHOST=test
+    volumes:
+      - rabbitmq_plugins:/opt/rabbitmq/plugins
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - common-bridge
+
+volumes:
+  rabbitmq_data:
+    name: rabbitmq_data
+  rabbitmq_plugins:
+    name: rabbitmq_plugins
+
+networks:
+  common-bridge:
+    driver: bridge
+    name: common-bridge
+    external: true
